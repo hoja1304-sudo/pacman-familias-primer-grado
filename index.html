@@ -172,6 +172,7 @@
   ];
   const MAX_MOSTRAR=19;     // familias con más números → 10 al azar
   const N_AZAR=10;
+  const N_LAB=5;           // laberinto: 5 fantasmas al azar (más espacio y palabras más grandes)
   const VIDAS_INI=5;
 
   const canvas=document.getElementById('tablero');
@@ -293,9 +294,10 @@
   // ---------- Familia → números ----------
   function numerosDeFamilia(fam){
     const arr=[]; for(let n=fam.min;n<=fam.max;n++) arr.push(n);
-    if(arr.length>(modo==="palabra"?N_AZAR:MAX_MOSTRAR)){
+    const tope=(modo==="palabra"?N_LAB:MAX_MOSTRAR), cuantos=(modo==="palabra"?N_LAB:N_AZAR);
+    if(arr.length>tope){
       for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
-      arr.length=N_AZAR;
+      arr.length=cuantos;
     }
     arr.sort((a,b)=>a-b);
     return arr;
@@ -352,7 +354,7 @@
       chip.className="famchip "+(modo==="facil"?"f":modo==="dificil"?"d":"p");
       const rec=leerRec(modo,fam.id);
       chip.innerHTML='<span class="fl">'+fam.min+'–'+fam.max+'</span>'+
-                     '<span class="fc">'+(count>(modo==="palabra"?N_AZAR:MAX_MOSTRAR)?(N_AZAR+' al azar'):(count+' núm.'))+'</span>'+
+                     '<span class="fc">'+(modo==="palabra"?(count>N_LAB?(N_LAB+' al azar'):(count+' núm.')):(count>MAX_MOSTRAR?(N_AZAR+' al azar'):(count+' núm.')))+'</span>'+
                      '<span class="fr">'+(rec?('🏆 '+fmt(rec)):'&nbsp;')+'</span>';
       chip.addEventListener('click',()=>iniciar(fam));
       cont.appendChild(chip);
@@ -533,13 +535,16 @@
   function dibujarPalabra(c,g,r){
     const t=numeroATexto(g.n), k=t.indexOf(" y ");
     const lineas = k>0 ? [t.slice(0,k+2), t.slice(k+3)] : [t];
-    const fs=Math.max(9,Math.min(W*0.023,r*0.6)); c.font="bold "+fs+"px 'Trebuchet MS',sans-serif"; c.textAlign="center"; c.textBaseline="middle";
+    const fs=Math.max(13,Math.min(W*0.036,r*0.95)); c.font="bold "+fs+"px 'Trebuchet MS',sans-serif"; c.textAlign="center"; c.textBaseline="middle";
     const ancho=Math.max(...lineas.map(l=>c.measureText(l).width))+fs*0.9, alto=lineas.length*fs*1.1+fs*0.5;
-    const y0=r*0.82;
+    // debajo del fantasma; si no cabe abajo va arriba, y nunca se sale por los lados
+    let y0=r*0.82; if(g.y+y0+alto>H-3) y0=-r*1.05-alto;
+    const x0=Math.max(3-g.x, Math.min(W-3-g.x-ancho, -ancho/2));
+    c.translate(x0+ancho/2,0);
     c.beginPath(); if(c.roundRect) c.roundRect(-ancho/2,y0,ancho,alto,fs*0.45); else c.rect(-ancho/2,y0,ancho,alto);
     c.fillStyle="rgba(255,255,255,.95)"; c.shadowColor="rgba(0,0,0,.4)"; c.shadowBlur=6; c.fill(); c.shadowBlur=0;
     c.lineWidth=2; c.strokeStyle=g.color; c.stroke();
-    c.fillStyle="#12235e"; lineas.forEach((l,i)=>c.fillText(l,0,y0+fs*0.25+fs*1.1*(i+0.5)));
+    c.fillStyle="#0b1640"; lineas.forEach((l,i)=>c.fillText(l,0,y0+fs*0.25+fs*1.1*(i+0.5)));
   }
   function dibujarDot(d){
     if(d.comido) return; const r=W*0.032, txt=String(d.n);
@@ -590,7 +595,7 @@
     // repartir: que no queden dos fantasmas en la misma casilla ni pegados
     const usados=[]; ghosts=[];
     for(const [c,r] of cand){ if(usados.length>=numeros.length) break;
-      if(usados.some(u=>Math.abs(u[0]-c)+Math.abs(u[1]-r)<3)) continue; usados.push([c,r]); }
+      if(usados.some(u=>Math.abs(u[0]-c)+Math.abs(u[1]-r)<5)) continue; usados.push([c,r]); }
     for(const [c,r] of cand){ if(usados.length>=numeros.length) break; if(!usados.some(u=>u[0]===c&&u[1]===r)) usados.push([c,r]); }
     numeros.forEach((n,k)=>{ const g=ent(usados[k][0],usados[k][1]);
       Object.assign(g,{ n, color:COLORES[k%COLORES.length], wob:Math.random()*Math.PI*2, comido:false, pop:0, peligro:false, mal:0 });
