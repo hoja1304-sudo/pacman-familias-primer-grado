@@ -128,7 +128,7 @@
         <div class="desc">Números en <b>desorden</b> y <b>fantasmas que te persiguen</b>. Escúchalos, encuéntralos y ¡esquiva! Tienes <b>5 vidas</b> ❤️</div>
       </div>
       <div class="nivel palabra" id="cardPalabra">
-        <div class="cab">🔵 De literal a numeral</div>
+        <div class="cab">🔵 De numeral a literal</div>
         <div class="desc">Cada <b>fantasma lleva la palabra</b> (nueve). Arriba ves el <b>numeral</b> (9) y la voz lo dice. ¡Come la palabra correcta! ⏱️</div>
       </div>
     </div>
@@ -172,7 +172,7 @@
   ];
   const MAX_MOSTRAR=19;     // familias con más números → 10 al azar
   const N_AZAR=10;
-  const N_LAB=5;           // De literal a numeral: 5 fantasmas al azar (más espacio y palabras más grandes)
+  const N_LAB=5;           // De numeral a literal: 5 fantasmas al azar (más espacio y palabras más grandes)
   const VIDAS_INI=5;
 
   const canvas=document.getElementById('tablero');
@@ -347,7 +347,7 @@
   // ---------- Menú de familias ----------
   function renderFamilias(){
     const cont=document.getElementById('gridFam'); cont.innerHTML="";
-    document.getElementById('famSub').textContent = (modo==="facil"?"Nivel 1 · Fácil":modo==="dificil"?"Nivel 2 · Difícil":"De literal a numeral");
+    document.getElementById('famSub').textContent = (modo==="facil"?"Nivel 1 · Fácil":modo==="dificil"?"Nivel 2 · Difícil":"De numeral a literal");
     FAMILIAS.forEach(fam=>{
       const count=fam.max-fam.min+1;
       const chip=document.createElement('button');
@@ -409,7 +409,7 @@
       const nuevo=(rec===null||total<rec); if(nuevo) guardarRec(modo,familia.id,total);
       pintarRecordHUD();
       t.textContent="🏆 ¡GANASTE!";
-      let msg="Familia <b>"+familia.min+"–"+familia.max+"</b> · "+(modo==="facil"?"Fácil":modo==="dificil"?"Difícil":"De literal a numeral")+
+      let msg="Familia <b>"+familia.min+"–"+familia.max+"</b> · "+(modo==="facil"?"Fácil":modo==="dificil"?"Difícil":"De numeral a literal")+
               "<br>Comiste los "+totalFam+" números.<br>Tu tiempo: <b>"+fmt(total)+"</b>";
       msg += nuevo ? "<br><span style='color:#3ddc84'>🎉 ¡NUEVO RÉCORD!</span>" : "<br>Récord: <b>"+fmt(rec)+"</b>";
       document.getElementById('finTexto').innerHTML=msg;
@@ -565,7 +565,7 @@
     ctx.clearRect(0,0,W,H);
     if(modo==="dificil") for(const d of dots) dibujarDot(d);
     for(const g of ghosts) if(g.comido && g.pop>0) dibujarGhost(ctx,g);
-    // De literal a numeral: primero los carteles con la palabra y después los cuerpos (el fantasma se ve completo)
+    // De numeral a literal: primero los carteles con la palabra y después los cuerpos (el fantasma se ve completo)
     if(modo==="palabra") for(const g of ghosts) if(!g.comido){ ctx.save(); ctx.translate(g.x,g.y); dibujarPalabra(ctx,g,g.r); ctx.restore(); }
     for(const g of ghosts) if(!g.comido) dibujarGhost(ctx,g);
     if(estado==="jugando") dibujarCursor();
