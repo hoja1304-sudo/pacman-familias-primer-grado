@@ -215,7 +215,8 @@
   function numeroAVoz(n){
     // 11: el seseo deja "onse", que no es palabra; las voces de Windows la leían con reglas
     // del inglés ("ons") y "ónse" la deletreaban. Con la cifra, la voz dice "once" por sí sola.
-    if(n===11) return "11";
+    // Lo mismo pasaba con 13 ("trese" → "trec"); se usa la cifra de 11 a 15 (once…quince).
+    if(n>=11 && n<=15) return String(n);
     return numeroATexto(n)
       .replace(/\bveinticinco\b/g,"veintisinko")
       .replace(/\bcincuenta\b/g,"sinkuenta")
