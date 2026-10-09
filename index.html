@@ -317,7 +317,7 @@
   function crearGhostsFacil(){
     ghosts=[]; const cs=celdasParaN(numeros.length);
     numeros.forEach((n,k)=>{
-      const cel=cs[k], ang=Math.random()*Math.PI*2, v=W*0.0011+Math.random()*W*0.0009;
+      const cel=cs[k], ang=Math.random()*Math.PI*2, v=W*0.0007+Math.random()*W*0.0005;
       ghosts.push({ n, x:cel.x+(Math.random()*2-1)*W*0.02, y:cel.y+(Math.random()*2-1)*W*0.02,
         vx:Math.cos(ang)*v, vy:Math.sin(ang)*v, r:W*0.043, color:COLORES[k%COLORES.length],
         wob:Math.random()*Math.PI*2, turn:500+Math.random()*1500, comido:false, pop:0, peligro:false });
@@ -329,7 +329,7 @@
     numeros.forEach((n,k)=>{ const cel=cs[k];
       dots.push({ n, x:cel.x+(Math.random()*2-1)*W*0.022, y:cel.y+(Math.random()*2-1)*W*0.022, comido:false }); });
     ghosts=[]; const cant=4;
-    for(let i=0;i<cant;i++){ const ang=Math.random()*Math.PI*2, v=W*0.0022+Math.random()*W*0.0013;
+    for(let i=0;i<cant;i++){ const ang=Math.random()*Math.PI*2, v=W*0.0014+Math.random()*W*0.0008;
       ghosts.push({ n:0, x:W*0.2+Math.random()*W*0.6, y:W*0.2+Math.random()*W*0.6, vx:Math.cos(ang)*v, vy:Math.sin(ang)*v,
         r:W*0.04, color:COLORES[i%4], wob:Math.random()*Math.PI*2, turn:600+Math.random()*1200, comido:false, pop:0, peligro:true }); }
   }
@@ -450,7 +450,7 @@
     if(modo==="palabra"){ updateLab(dt); if(estado==="jugando") actualizarHUD(); return; }
     const tx=mouse.active?mouse.x:pac.x, ty=mouse.active?mouse.y:pac.y;
     const dx=tx-pac.x, dy=ty-pac.y, dist=Math.hypot(dx,dy);
-    const maxV=W*0.012, ease=0.18;
+    const maxV=W*0.008, ease=0.14;
     let mvx=dx*ease, mvy=dy*ease; const mv=Math.hypot(mvx,mvy);
     if(mv>maxV){ mvx=mvx/mv*maxV; mvy=mvy/mv*maxV; }
     pac.x+=mvx*(dt/16.67); pac.y+=mvy*(dt/16.67);
@@ -466,11 +466,11 @@
         if(Math.hypot(g.x-pac.x,g.y-pac.y) < pac.r+g.r*0.72){
           if(g.n===objetivo){
             g.comido=true; g.pop=260; comidos++; sBien();
-            flash("¡"+numeroATexto(g.n).toUpperCase()+"! ✓","bien"); actualizarHUD();
+            actualizarHUD();
             if(comidos>=totalFam){ terminar(true); return; }
             ordenIdx++; ponerObjetivo(numeros[ordenIdx]);
           } else if(coolMal<=0){
-            coolMal=650; penal+=2000; sMal(); flash("Ese es el "+g.n+" · +2s","mal");
+            coolMal=650; penal+=2000; sMal(); 
             const a=Math.atan2(pac.y-g.y,pac.x-g.x); pac.x+=Math.cos(a)*pac.r*1.4; pac.y+=Math.sin(a)*pac.r*1.4;
           }
         }
@@ -482,11 +482,11 @@
           if(d.n===objetivo){
             d.comido=true; comidos++; sBien();
             const i=restantes.indexOf(objetivo); if(i>=0) restantes.splice(i,1);
-            flash("¡"+numeroATexto(d.n).toUpperCase()+"! ✓","bien"); actualizarHUD();
+            actualizarHUD();
             if(comidos>=totalFam){ terminar(true); return; }
             objetivoDificil();
           } else if(coolMal<=0){
-            coolMal=600; penal+=2000; sMal(); flash("Ese es el "+d.n+" · +2s","mal");
+            coolMal=600; penal+=2000; sMal(); 
             const a=Math.atan2(pac.y-d.y,pac.x-d.x); pac.x+=Math.cos(a)*pac.r*1.5; pac.y+=Math.sin(a)*pac.r*1.5;
           }
         }
@@ -521,7 +521,7 @@
     } else {
       for(const s of[-1,1]){ c.beginPath(); c.ellipse(s*r*0.34,-r*0.34,r*0.13,r*0.17,0,0,Math.PI*2); c.fillStyle="#fff"; c.fill();
         c.beginPath(); c.arc(s*r*0.34,-r*0.32,r*0.07,0,Math.PI*2); c.fillStyle="#12235e"; c.fill(); }
-      if(modo==="palabra"){ dibujarPalabra(c,g,r); c.restore(); return; }
+      if(modo==="palabra"){ c.restore(); return; }
       const num=String(g.n);
       c.font=fontNum(r,num); c.textAlign="center"; c.textBaseline="middle";
       c.lineWidth=Math.max(3,r*0.16); c.strokeStyle="rgba(0,0,0,.6)"; c.strokeText(num,0,r*0.22);
@@ -529,13 +529,13 @@
     }
     c.restore();
   }
-  // Palabra del número en un cartel bajo los ojos ("noventa y" / "nueve" en dos renglones)
+  // Palabra del número en un cartel debajo del fantasma (el cuerpo queda visible) ("noventa y" / "nueve" en dos renglones)
   function dibujarPalabra(c,g,r){
     const t=numeroATexto(g.n), k=t.indexOf(" y ");
     const lineas = k>0 ? [t.slice(0,k+2), t.slice(k+3)] : [t];
-    const fs=Math.max(11,Math.min(W*0.027,r*0.8)); c.font="bold "+fs+"px 'Trebuchet MS',sans-serif"; c.textAlign="center"; c.textBaseline="middle";
+    const fs=Math.max(9,Math.min(W*0.023,r*0.6)); c.font="bold "+fs+"px 'Trebuchet MS',sans-serif"; c.textAlign="center"; c.textBaseline="middle";
     const ancho=Math.max(...lineas.map(l=>c.measureText(l).width))+fs*0.9, alto=lineas.length*fs*1.1+fs*0.5;
-    const y0=r*0.22-alto/2+(lineas.length>1?fs*0.25:0);
+    const y0=r*0.82;
     c.beginPath(); if(c.roundRect) c.roundRect(-ancho/2,y0,ancho,alto,fs*0.45); else c.rect(-ancho/2,y0,ancho,alto);
     c.fillStyle="rgba(255,255,255,.95)"; c.shadowColor="rgba(0,0,0,.4)"; c.shadowBlur=6; c.fill(); c.shadowBlur=0;
     c.lineWidth=2; c.strokeStyle=g.color; c.stroke();
@@ -633,7 +633,7 @@
     // dar la vuelta a mitad de pasillo
     if(want && p.d && want[0]===-p.d[0] && want[1]===-p.d[1] && (p.d[0]||p.d[1])){
       const oc=p.c, or=p.r; p.c=p.tc; p.r=p.tr; p.tc=oc; p.tr=or; p.d=want; }
-    let llegado=avanzar(p,0.0055*dt);
+    let llegado=avanzar(p,0.0038*dt);
     if(llegado){
       const k=p.c+","+p.r; if(lab.pellets.has(k)){ lab.pellets.delete(k); sWaka(); }
       const w=dirDeseadaPac(p);
@@ -646,18 +646,18 @@
     for(const g of ghosts){
       if(g.comido){ if(g.pop>0) g.pop-=dt; continue; }
       g.wob+=dt*0.007; if(g.mal>0) g.mal-=dt;
-      if(avanzar(g,0.0026*dt)) elegirDirGhost(g);
+      if(avanzar(g,0.0016*dt)) elegirDirGhost(g);
       if(Math.hypot(g.x-p.x,g.y-p.y)<0.72){
         if(g.n===objetivo){
           g.comido=true; g.pop=260; comidos++; sBien();
-          flash("¡"+g.n+" · "+numeroATexto(g.n).toUpperCase()+"! ✓","bien");
+          
           const i=restantes.indexOf(g.n); if(i>=0) restantes.splice(i,1);
           actualizarHUD();
           if(comidos>=totalFam){ terminar(true); return; }
           objetivoDificil();
         } else if(coolMal<=0){
           coolMal=900; penal+=2000; sMal(); g.mal=600;
-          flash("Ese dice "+numeroATexto(g.n)+" · +2s","mal");
+          
           // el fantasma se da la vuelta
           const oc=g.c, or=g.r; g.c=g.tc; g.r=g.tr; g.tc=oc; g.tr=or; g.d=[-g.d[0],-g.d[1]];
         }
@@ -687,8 +687,10 @@
     ctx.restore();
     // pac-man
     if(lab.p){ pac.x=(lab.p.x+0.5)*T; pac.y=(lab.p.y+0.5)*T; pac.r=T*0.42; }
-    const vista=g=>Object.assign({},g,{x:(g.x+0.5)*T+(g.mal>0?Math.sin(g.mal*0.08)*T*0.08:0),y:(g.y+0.5)*T,r:T*0.42});
+    const vista=g=>Object.assign({},g,{x:(g.x+0.5)*T+(g.mal>0?Math.sin(g.mal*0.08)*T*0.08:0),y:(g.y+0.4)*T,r:T*0.46});
     for(const g of ghosts) if(g.comido && g.pop>0) dibujarGhost(ctx,vista(g));
+    // primero los carteles y después los cuerpos: así el fantasma siempre se ve completo
+    for(const g of ghosts) if(!g.comido){ const v=vista(g); ctx.save(); ctx.translate(v.x,v.y); dibujarPalabra(ctx,v,v.r); ctx.restore(); }
     dibujarPac();
     for(const g of ghosts) if(!g.comido) dibujarGhost(ctx,vista(g));
   }
