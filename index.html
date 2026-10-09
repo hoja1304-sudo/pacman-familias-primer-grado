@@ -72,6 +72,7 @@
   .nivel.dificil{border-color:#ff4b57;} .nivel.dificil:hover{background:rgba(255,75,87,.14);}
   .nivel.palabra{border-color:#63e6ff;} .nivel.palabra:hover{background:rgba(99,230,255,.14);}
   .nivel .cab{font-size:19px;font-weight:bold;}
+  .nivel .tipo{margin-top:-4px;font-size:14px;font-weight:bold;color:var(--amarillo);letter-spacing:.3px;}
   .ae{max-width:620px;margin:0;font-size:clamp(13px,3.2vw,16px);line-height:1.45;background:rgba(255,212,0,.10);border:1px solid rgba(255,212,0,.45);border-radius:14px;padding:8px 14px;}
   .ae b{color:var(--amarillo);}
   .nivel .desc{font-size:13px;opacity:.9;line-height:1.4;}
@@ -121,10 +122,12 @@
     <div class="niveles">
       <div class="nivel facil" id="cardFacil">
         <div class="cab">🟢 Nivel 1 · Fácil</div>
+        <div class="tipo">De literal a numeral</div>
         <div class="desc"><b>Fantasmas con números</b> que se mueven. Cómelos <b>en orden</b>. Sin peligro, ¡contra el reloj! ⏱️</div>
       </div>
       <div class="nivel dificil" id="cardDificil">
         <div class="cab">🔴 Nivel 2 · Difícil</div>
+        <div class="tipo">De literal a numeral</div>
         <div class="desc">Números en <b>desorden</b> y <b>fantasmas que te persiguen</b>. Escúchalos, encuéntralos y ¡esquiva! Tienes <b>5 vidas</b> ❤️</div>
       </div>
       <div class="nivel palabra" id="cardPalabra">
