@@ -172,7 +172,7 @@
   ];
   const MAX_MOSTRAR=19;     // familias con más números → 10 al azar
   const N_AZAR=10;
-  const N_LAB=5;           // laberinto: 5 fantasmas al azar (más espacio y palabras más grandes)
+  const N_LAB=5;           // De literal a numeral: 5 fantasmas al azar (más espacio y palabras más grandes)
   const VIDAS_INI=5;
 
   const canvas=document.getElementById('tablero');
@@ -376,7 +376,7 @@
 
   // ---------- Iniciar ----------
   function iniciar(fam){
-    lab.activo=false; familia=fam; initAudio(); resize();
+    familia=fam; initAudio(); resize();
     numeros=numerosDeFamilia(fam); totalFam=numeros.length; ordenIdx=0;
     comidos=0; penal=0; coolMal=0; vidas=VIDAS_INI;
     pac.x=W/2; pac.y=H/2; pac.invuln=0;
@@ -390,7 +390,7 @@
     document.getElementById('ovFin').classList.add('hidden');
     estado="jugando";
     if(modo==="facil"){ crearGhostsFacil(); ordenIdx=0; ponerObjetivo(numeros[0]); }
-    else if(modo==="palabra"){ crearLaberinto(); restantes=numeros.slice(); objetivoDificil(); }
+    else if(modo==="palabra"){ crearGhostsFacil(); restantes=numeros.slice(); objetivoDificil(); }
     else{ crearNivelDificil(); restantes=numeros.slice(); objetivoDificil(); }
     actualizarHUD();
   }
@@ -428,11 +428,6 @@
     const cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
     mouse.x=Math.max(0,Math.min(W,cx)); mouse.y=Math.max(0,Math.min(H,cy)); mouse.active=true; }
   canvas.addEventListener('mousemove',posEvt);
-  window.addEventListener('keydown',function(e){
-    const k={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];
-    if(!k || estado!=="jugando" || modo!=="palabra") return;
-    e.preventDefault(); lab.want=k; mouse.active=false;
-  });
   canvas.addEventListener('mouseenter',posEvt);
   canvas.addEventListener('touchstart',function(e){ posEvt(e); e.preventDefault(); },{passive:false});
   canvas.addEventListener('touchmove',function(e){ posEvt(e); e.preventDefault(); },{passive:false});
@@ -449,7 +444,6 @@
   function update(dt){
     if(estado!=="jugando") return;
     tActual=performance.now()-tInicio+penal;
-    if(modo==="palabra"){ updateLab(dt); if(estado==="jugando") actualizarHUD(); return; }
     const tx=mouse.active?mouse.x:pac.x, ty=mouse.active?mouse.y:pac.y;
     const dx=tx-pac.x, dy=ty-pac.y, dist=Math.hypot(dx,dy);
     const maxV=W*0.008, ease=0.14;
@@ -461,7 +455,7 @@
     pac.mouth += (mv>0.4?0.25:0.08);
     if(coolMal>0) coolMal-=dt; if(pac.invuln>0) pac.invuln-=dt;
 
-    if(modo==="facil"){
+    if(modo==="facil"||modo==="palabra"){
       for(const g of ghosts){
         if(g.comido){ if(g.pop>0) g.pop-=dt; continue; }
         moverGhost(g,dt);
@@ -470,7 +464,8 @@
             g.comido=true; g.pop=260; comidos++; sBien();
             actualizarHUD();
             if(comidos>=totalFam){ terminar(true); return; }
-            ordenIdx++; ponerObjetivo(numeros[ordenIdx]);
+            if(modo==="palabra"){ const i=restantes.indexOf(g.n); if(i>=0) restantes.splice(i,1); objetivoDificil(); }
+            else { ordenIdx++; ponerObjetivo(numeros[ordenIdx]); }
           } else if(coolMal<=0){
             coolMal=650; penal+=2000; sMal(); 
             const a=Math.atan2(pac.y-g.y,pac.x-g.x); pac.x+=Math.cos(a)*pac.r*1.4; pac.y+=Math.sin(a)*pac.r*1.4;
@@ -568,137 +563,16 @@
     ctx.beginPath(); ctx.arc(mouse.x,mouse.y,6,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
   function draw(){
     ctx.clearRect(0,0,W,H);
-    if(lab.activo){ drawLab(); return; }
     if(modo==="dificil") for(const d of dots) dibujarDot(d);
     for(const g of ghosts) if(g.comido && g.pop>0) dibujarGhost(ctx,g);
+    // De literal a numeral: primero los carteles con la palabra y después los cuerpos (el fantasma se ve completo)
+    if(modo==="palabra") for(const g of ghosts) if(!g.comido){ ctx.save(); ctx.translate(g.x,g.y); dibujarPalabra(ctx,g,g.r); ctx.restore(); }
     for(const g of ghosts) if(!g.comido) dibujarGhost(ctx,g);
     if(estado==="jugando") dibujarCursor();
     if(estado==="jugando"||estado==="fin") dibujarPac();
   }
   function loop(ts){ const dt=Math.min(50,ts-last||16.67); last=ts; update(dt); draw(); requestAnimationFrame(loop); }
 
-
-  // ================= Laberinto (De literal a numeral) =================
-  const MAZE=["#############","#.....#.....#","#.###.#.###.#","#...........#","#.##.#.#.##.#","#....#.#....#",
-              "###.#...#.###","#...#.#.#...#","#.#.......#.#","#.#.##.##.#.#","#...#...#...#","#.....#.....#","#############"];
-  const MZ=MAZE.length;
-  const lab={ p:null, pellets:new Set(), want:null, activo:false };
-  const libre=(c,r)=> r>=0&&r<MZ&&c>=0&&c<MZ&&MAZE[r][c]===".";
-  const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
-  function ent(c,r){ return {c,r,x:c,y:r,tc:c,tr:r,d:[0,0]}; }
-  function crearLaberinto(){
-    const p=ent(6,8); p.d=[0,0]; lab.p=p; lab.want=null; lab.activo=true;
-    lab.pellets=new Set();
-    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(libre(c,r) && !(c===6&&r===8)) lab.pellets.add(c+","+r);
-    const cand=[]; for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(libre(c,r) && Math.abs(c-6)+Math.abs(r-8)>=4) cand.push([c,r]);
-    for(let i=cand.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [cand[i],cand[j]]=[cand[j],cand[i]]; }
-    // repartir: que no queden dos fantasmas en la misma casilla ni pegados
-    const usados=[]; ghosts=[];
-    for(const [c,r] of cand){ if(usados.length>=numeros.length) break;
-      if(usados.some(u=>Math.abs(u[0]-c)+Math.abs(u[1]-r)<5)) continue; usados.push([c,r]); }
-    for(const [c,r] of cand){ if(usados.length>=numeros.length) break; if(!usados.some(u=>u[0]===c&&u[1]===r)) usados.push([c,r]); }
-    numeros.forEach((n,k)=>{ const g=ent(usados[k][0],usados[k][1]);
-      Object.assign(g,{ n, color:COLORES[k%COLORES.length], wob:Math.random()*Math.PI*2, comido:false, pop:0, peligro:false, mal:0 });
-      elegirDirGhost(g); ghosts.push(g); });
-    mouse.active=false;
-  }
-  function elegirDirGhost(g){
-    const ops=DIRS.filter(d=>libre(g.c+d[0],g.r+d[1]));
-    const sinVolver=ops.filter(d=>!(d[0]===-g.d[0]&&d[1]===-g.d[1]));
-    const lista=sinVolver.length?sinVolver:ops; const d=lista[Math.floor(Math.random()*lista.length)]||[0,0];
-    g.d=d; g.tc=g.c+d[0]; g.tr=g.r+d[1];
-  }
-  // casilla libre más cercana a un punto del tablero (en casillas)
-  function casillaCercana(fx,fy){ let best=null,bd=1e9;
-    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(libre(c,r)){ const d=(c-fx)*(c-fx)+(r-fy)*(r-fy); if(d<bd){bd=d;best=[c,r];} }
-    return best; }
-  // primer paso del camino más corto (BFS) desde (c,r) hasta destino
-  function primerPaso(c,r,dest){
-    if(c===dest[0]&&r===dest[1]) return null;
-    const prev={}, q=[[c,r]]; prev[c+","+r]=null;
-    while(q.length){ const [x,y]=q.shift(); if(x===dest[0]&&y===dest[1]) break;
-      for(const d of DIRS){ const nx=x+d[0],ny=y+d[1],k=nx+","+ny; if(libre(nx,ny) && !(k in prev)){ prev[k]=[x,y]; q.push([nx,ny]); } } }
-    let k=dest[0]+","+dest[1]; if(!(k in prev)) return null;
-    let cur=dest; while(prev[cur[0]+","+cur[1]] && !(prev[cur[0]+","+cur[1]][0]===c && prev[cur[0]+","+cur[1]][1]===r)) cur=prev[cur[0]+","+cur[1]];
-    return [cur[0]-c,cur[1]-r];
-  }
-  function dirDeseadaPac(p){
-    if(mouse.active){ const T=W/MZ; const dest=casillaCercana(mouse.x/T-0.5,mouse.y/T-0.5); return primerPaso(p.c,p.r,dest); }
-    return lab.want;
-  }
-  // mueve una entidad hacia su casilla destino; devuelve true al llegar al centro
-  function avanzar(e,vel){
-    const dx=e.tc-e.x, dy=e.tr-e.y, dist=Math.abs(dx)+Math.abs(dy);
-    if(dist<=vel){ e.x=e.tc; e.y=e.tr; e.c=e.tc; e.r=e.tr; return true; }
-    e.x+=Math.sign(dx)*vel; e.y+=Math.sign(dy)*vel; return false;
-  }
-  function updateLab(dt){
-    const p=lab.p; if(!p) return;
-    const want=dirDeseadaPac(p);
-    // dar la vuelta a mitad de pasillo
-    if(want && p.d && want[0]===-p.d[0] && want[1]===-p.d[1] && (p.d[0]||p.d[1])){
-      const oc=p.c, or=p.r; p.c=p.tc; p.r=p.tr; p.tc=oc; p.tr=or; p.d=want; }
-    let llegado=avanzar(p,0.0038*dt);
-    if(llegado){
-      const k=p.c+","+p.r; if(lab.pellets.has(k)){ lab.pellets.delete(k); sWaka(); }
-      const w=dirDeseadaPac(p);
-      if(w && libre(p.c+w[0],p.r+w[1])){ p.d=w; p.tc=p.c+w[0]; p.tr=p.r+w[1]; }
-      else if(!mouse.active && libre(p.c+p.d[0],p.r+p.d[1]) && (p.d[0]||p.d[1])){ p.tc=p.c+p.d[0]; p.tr=p.r+p.d[1]; }
-      else { p.d=[0,0]; p.tc=p.c; p.tr=p.r; }
-    }
-    if(p.d[0]||p.d[1]){ pac.dir=Math.atan2(p.d[1],p.d[0]); pac.mouth+=0.25; } else pac.mouth+=0.06;
-    if(coolMal>0) coolMal-=dt;
-    for(const g of ghosts){
-      if(g.comido){ if(g.pop>0) g.pop-=dt; continue; }
-      g.wob+=dt*0.007; if(g.mal>0) g.mal-=dt;
-      if(avanzar(g,0.0016*dt)) elegirDirGhost(g);
-      if(Math.hypot(g.x-p.x,g.y-p.y)<0.72){
-        if(g.n===objetivo){
-          g.comido=true; g.pop=260; comidos++; sBien();
-          
-          const i=restantes.indexOf(g.n); if(i>=0) restantes.splice(i,1);
-          actualizarHUD();
-          if(comidos>=totalFam){ terminar(true); return; }
-          objetivoDificil();
-        } else if(coolMal<=0){
-          coolMal=900; penal+=2000; sMal(); g.mal=600;
-          
-          // el fantasma se da la vuelta
-          const oc=g.c, or=g.r; g.c=g.tc; g.r=g.tr; g.tc=oc; g.tr=or; g.d=[-g.d[0],-g.d[1]];
-        }
-      }
-    }
-  }
-  function drawLab(){
-    const T=W/MZ;
-    ctx.save(); ctx.fillStyle="#050b22"; ctx.fillRect(0,0,W,H);
-    // paredes: relleno + borde de neón solo hacia los pasillos
-    ctx.fillStyle="#0f1f63";
-    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(!libre(c,r)) ctx.fillRect(c*T,r*T,T+0.5,T+0.5);
-    ctx.strokeStyle="#4d7cff"; ctx.lineWidth=Math.max(2,T*0.08); ctx.lineCap="round"; ctx.shadowColor="#4d7cff"; ctx.shadowBlur=8;
-    ctx.beginPath();
-    const ins=T*0.1;
-    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++){ if(libre(c,r)) continue;
-      const x=c*T,y=r*T;
-      if(libre(c,r-1)){ ctx.moveTo(x,y+ins); ctx.lineTo(x+T,y+ins); }
-      if(libre(c,r+1)){ ctx.moveTo(x,y+T-ins); ctx.lineTo(x+T,y+T-ins); }
-      if(libre(c-1,r)){ ctx.moveTo(x+ins,y); ctx.lineTo(x+ins,y+T); }
-      if(libre(c+1,r)){ ctx.moveTo(x+T-ins,y); ctx.lineTo(x+T-ins,y+T); }
-    }
-    ctx.stroke(); ctx.shadowBlur=0;
-    // bolitas
-    ctx.fillStyle="#ffd9a0";
-    lab.pellets.forEach(k=>{ const [c,r]=k.split(",").map(Number); ctx.beginPath(); ctx.arc((c+0.5)*T,(r+0.5)*T,Math.max(2,T*0.07),0,Math.PI*2); ctx.fill(); });
-    ctx.restore();
-    // pac-man
-    if(lab.p){ pac.x=(lab.p.x+0.5)*T; pac.y=(lab.p.y+0.5)*T; pac.r=T*0.42; }
-    const vista=g=>Object.assign({},g,{x:(g.x+0.5)*T+(g.mal>0?Math.sin(g.mal*0.08)*T*0.08:0),y:(g.y+0.4)*T,r:T*0.46});
-    for(const g of ghosts) if(g.comido && g.pop>0) dibujarGhost(ctx,vista(g));
-    // primero los carteles y después los cuerpos: así el fantasma siempre se ve completo
-    for(const g of ghosts) if(!g.comido){ const v=vista(g); ctx.save(); ctx.translate(v.x,v.y); dibujarPalabra(ctx,v,v.r); ctx.restore(); }
-    dibujarPac();
-    for(const g of ghosts) if(!g.comido) dibujarGhost(ctx,vista(g));
-  }
 
   // ---------- Botones ----------
   document.getElementById('cardFacil').addEventListener('click',()=>irAFamilias("facil"));
@@ -714,7 +588,7 @@
 
   // ---------- Arranque ----------
   resize(); pac.x=W/2; pac.y=H/2; pintarVoz();
-  if(location.hash==="#prueba") window.__pm={lab,get ghosts(){return ghosts},get objetivo(){return objetivo},get estado(){return estado},get comidos(){return comidos},update:dt=>update(dt)};
+  if(location.hash==="#prueba") window.__pm={get ghosts(){return ghosts},get objetivo(){return objetivo},get estado(){return estado},get comidos(){return comidos},update:dt=>update(dt)};
   requestAnimationFrame(loop);
 })();
 </script>
