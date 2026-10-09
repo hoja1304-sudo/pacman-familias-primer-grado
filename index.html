@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Comer familias de 1 a 99 · Pac-Man</title>
+<style>
+  :root{ --amarillo:#ffd400; --verde:#3ddc84; --rojo:#ff4b57; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;
+    background:radial-gradient(circle at 50% -10%,#1b3a8a 0%,#0a1636 55%,#050b22 100%);
+    color:#fff;min-height:100dvh;display:flex;flex-direction:column;align-items:center;overflow:hidden;user-select:none;
+  }
+  header{width:100%;text-align:center;padding:6px 10px 2px;}
+  h1{margin:0;font-size:clamp(17px,4.5vw,28px);letter-spacing:1px;color:var(--amarillo);text-shadow:0 3px 0 #b58a00,0 0 18px rgba(255,212,0,.5);}
+
+  #hud{width:min(97vw,920px);display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:stretch;margin:6px auto 4px;}
+  .panel{background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.18);border-radius:14px;padding:6px 12px;
+         display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:70px;backdrop-filter:blur(3px);}
+  .panel.hidden{display:none;}
+  .panel .lbl{font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:1px;}
+  .panel .val{font-size:20px;font-weight:bold;line-height:1.1;}
+  #panelVoz{cursor:pointer;border-color:rgba(61,220,132,.7);background:rgba(61,220,132,.14);
+            box-shadow:0 3px 0 rgba(30,156,88,.55);transition:border-color .12s,transform .1s,box-shadow .1s,background .12s;}
+  #panelVoz:hover{background:rgba(61,220,132,.24);}
+  #panelVoz:active{transform:translateY(3px);box-shadow:0 0 0 rgba(30,156,88,.55);}
+  #panelVoz .lbl{opacity:.95;}
+  #panelVoz .val{color:var(--verde);}
+  #panelVoz.off{border-color:rgba(255,75,87,.7);background:rgba(255,75,87,.14);box-shadow:0 3px 0 rgba(160,30,40,.55);}
+  #panelVoz.off:hover{background:rgba(255,75,87,.24);}
+  #panelVoz.off .val{color:var(--rojo);}
+  #objetivo{background:linear-gradient(180deg,#1d3fa0,#122a6b);border:3px solid var(--amarillo);box-shadow:0 0 20px rgba(255,212,0,.35);min-width:200px;flex-direction:row;gap:12px;}
+  #objetivo .txt{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;}
+  #objetivo .lbl2{font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:1px;}
+  #palabra{font-size:clamp(20px,5.4vw,32px);min-width:1.4em;font-weight:bold;color:var(--amarillo);text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.4);}
+  #btnAudio{background:var(--amarillo);color:#5a3d00;border:none;width:52px;height:52px;border-radius:50%;font-size:24px;cursor:pointer;box-shadow:0 4px 0 #b58a00;transition:transform .1s;flex-shrink:0;}
+  #btnAudio:active{transform:translateY(3px);box-shadow:0 1px 0 #b58a00;}
+
+  #wrap{position:relative;width:min(97vw,920px);flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:4px 0 10px;min-height:0;}
+  #tablero{position:relative;
+    background:linear-gradient(rgba(20,40,110,.55),rgba(8,18,50,.75)),
+      repeating-linear-gradient(0deg,transparent 0 38px,rgba(255,255,255,.04) 38px 40px),
+      repeating-linear-gradient(90deg,transparent 0 38px,rgba(255,255,255,.04) 38px 40px);
+    border:4px solid #3358c8;border-radius:18px;
+    box-shadow:0 0 0 4px rgba(255,255,255,.05),0 12px 40px rgba(0,0,0,.5),inset 0 0 60px rgba(0,0,0,.4);
+    touch-action:none;display:block;max-width:100%;max-height:100%;cursor:none;}
+
+  #flash{position:absolute;top:11%;left:50%;transform:translateX(-50%);font-size:clamp(20px,6vw,40px);font-weight:bold;padding:8px 22px;border-radius:16px;
+         pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;z-index:5;}
+  #flash.show{opacity:1;transform:translateX(-50%) scale(1.05);}
+  #flash.bien{background:rgba(61,220,132,.95);color:#043a1c;box-shadow:0 8px 30px rgba(61,220,132,.5);}
+  #flash.mal{background:rgba(255,75,87,.95);color:#4a0006;box-shadow:0 8px 30px rgba(255,75,87,.5);}
+
+  .overlay{position:absolute;inset:0;background:rgba(4,10,30,.88);border-radius:14px;display:flex;flex-direction:column;
+           align-items:center;justify-content:center;text-align:center;gap:14px;padding:16px;z-index:10;backdrop-filter:blur(2px);overflow:auto;}
+  .overlay.hidden{display:none;}
+  /* centrado seguro: si el contenido no cabe, se desplaza sin cortar la parte de arriba */
+  .overlay{justify-content:flex-start;} .overlay>:first-child{margin-top:auto;} .overlay>:last-child{margin-bottom:auto;}
+  .overlay h2{margin:0;font-size:clamp(20px,5vw,34px);color:var(--amarillo);text-shadow:0 3px 0 #b58a00;}
+  .overlay p{margin:0;font-size:clamp(13px,3.3vw,16px);max-width:540px;line-height:1.45;opacity:.95;}
+  .btn{background:var(--amarillo);color:#4a3400;border:none;font-size:clamp(16px,4.4vw,22px);font-weight:bold;padding:11px 26px;border-radius:40px;cursor:pointer;box-shadow:0 6px 0 #b58a00;transition:transform .1s;letter-spacing:1px;}
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b58a00;}
+  .btn.verde{background:var(--verde);color:#043a1c;box-shadow:0 6px 0 #1e9c58;} .btn.verde:active{box-shadow:0 2px 0 #1e9c58;}
+  .btn.gris{background:rgba(255,255,255,.85);color:#222;box-shadow:0 6px 0 #8a8a8a;font-size:clamp(13px,3.4vw,16px);padding:8px 18px;} .btn.gris:active{box-shadow:0 2px 0 #8a8a8a;}
+
+  .niveles{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+  .nivel{background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);border-radius:16px;width:245px;max-width:82vw;padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:transform .12s,background .12s;}
+  .nivel:hover{transform:translateY(-3px);}
+  .nivel.facil{border-color:#3ddc84;} .nivel.facil:hover{background:rgba(61,220,132,.14);}
+  .nivel.dificil{border-color:#ff4b57;} .nivel.dificil:hover{background:rgba(255,75,87,.14);}
+  .nivel.palabra{border-color:#63e6ff;} .nivel.palabra:hover{background:rgba(99,230,255,.14);}
+  .nivel .cab{font-size:19px;font-weight:bold;}
+  .ae{max-width:620px;margin:0;font-size:clamp(13px,3.2vw,16px);line-height:1.45;background:rgba(255,212,0,.10);border:1px solid rgba(255,212,0,.45);border-radius:14px;padding:8px 14px;}
+  .ae b{color:var(--amarillo);}
+  .nivel .desc{font-size:13px;opacity:.9;line-height:1.4;}
+
+  #famSub{font-size:15px;font-weight:bold;opacity:.95;}
+  #gridFam{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;width:min(94vw,560px);max-height:50vh;overflow:auto;padding:4px 2px;}
+  .famchip{background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);border-radius:12px;color:#fff;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:transform .1s,background .1s;}
+  .famchip:hover{transform:translateY(-2px);}
+  .famchip.f{border-color:#3ddc84;} .famchip.f:hover{background:rgba(61,220,132,.15);}
+  .famchip.d{border-color:#ff4b57;} .famchip.d:hover{background:rgba(255,75,87,.15);}
+  .famchip.p{border-color:#63e6ff;} .famchip.p:hover{background:rgba(99,230,255,.15);}
+  .famchip .fl{font-size:18px;font-weight:bold;}
+  .famchip .fc{font-size:10.5px;opacity:.8;}
+  .famchip .fr{font-size:10.5px;color:#ffd400;font-weight:bold;min-height:13px;}
+  .fila-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+  .mini{font-size:13px;opacity:.8;margin-top:2px;max-width:540px;}
+  .credito{margin-top:10px;font-size:12px;line-height:1.55;color:rgba(255,255,255,.72);font-style:italic;letter-spacing:.3px;}
+  .credito b{color:var(--amarillo);font-weight:bold;font-style:normal;}
+  footer{font-size:11px;opacity:.5;padding:2px 0 6px;text-align:center;}
+</style>
+<script>/* voz en espanol neutro (seseo) - regla AGENTS */(function(){if(!window.SpeechSynthesisUtterance||window.__seseo)return;window.__seseo=1;function s(t){return t==null?t:(""+t).replace(/z/g,"s").replace(/Z/g,"S").replace(/c(?=[eiéíEIÉÍ])/g,"s").replace(/C(?=[eiéíEIÉÍ])/g,"S");}try{var p=SpeechSynthesisUtterance.prototype,d=Object.getOwnPropertyDescriptor(p,"text");if(d&&d.set&&d.get){Object.defineProperty(p,"text",{configurable:true,enumerable:d.enumerable,get:d.get,set:function(v){d.set.call(this,s(v));}});}}catch(e){}var O=window.SpeechSynthesisUtterance;function N(t){return arguments.length?new O(s(t)):new O();}N.prototype=O.prototype;try{window.SpeechSynthesisUtterance=N;}catch(e){}})();</script>
+</head>
+<body>
+
+<header><h1>🟡 Comer familias de 1 a 99 · Pac-Man</h1></header>
+
+<div id="hud">
+  <div class="panel" id="objetivo">
+    <button id="btnAudio" title="Escuchar el número">🔊</button>
+    <div class="txt"><span class="lbl2" id="objLbl">Come el fantasma…</span><span id="palabra">—</span></div>
+  </div>
+  <div class="panel"><span class="lbl">Progreso</span><span class="val" id="progreso">0/0</span></div>
+  <div class="panel"><span class="lbl">⏱️ Tiempo</span><span class="val" id="tiempo">00:00</span></div>
+  <div class="panel hidden" id="panelVidas"><span class="lbl">Vidas</span><span class="val" id="vidas">❤️❤️❤️❤️❤️</span></div>
+  <div class="panel" id="panelVoz" title="Activar/desactivar la voz del número"><span class="lbl">🔊 Voz</span><span class="val" id="vozEstado">ON</span></div>
+  <div class="panel"><span class="lbl">🏆 Récord</span><span class="val" id="record">—</span></div>
+</div>
+
+<div id="wrap">
+  <canvas id="tablero"></canvas>
+  <div id="flash"></div>
+
+  <!-- Paso 1: elegir nivel -->
+  <div class="overlay" id="ovMenu">
+    <p class="ae"><b>Aprendizaje esperado:</b> Identificar y aportar ejemplos de representaciones distintas de un número. Primer grado.</p>
+    <h2>Elige un nivel</h2>
+    <div class="niveles">
+      <div class="nivel facil" id="cardFacil">
+        <div class="cab">🟢 Nivel 1 · Fácil</div>
+        <div class="desc"><b>Fantasmas con números</b> que se mueven. Cómelos <b>en orden</b>. Sin peligro, ¡contra el reloj! ⏱️</div>
+      </div>
+      <div class="nivel dificil" id="cardDificil">
+        <div class="cab">🔴 Nivel 2 · Difícil</div>
+        <div class="desc">Números en <b>desorden</b> y <b>fantasmas que te persiguen</b>. Escúchalos, encuéntralos y ¡esquiva! Tienes <b>5 vidas</b> ❤️</div>
+      </div>
+      <div class="nivel palabra" id="cardPalabra">
+        <div class="cab">🔵 De literal a numeral</div>
+        <div class="desc">Cada <b>fantasma lleva la palabra</b> (nueve). Arriba ves el <b>numeral</b> (9) y la voz lo dice. ¡Come la palabra correcta! ⏱️</div>
+      </div>
+    </div>
+    <button class="btn gris" id="btnVozMenu">🔊 Voz del número: Activada</button>
+    <div class="mini">Muévete con el <b>mouse</b> (o el dedo). Con la voz <b>activada</b> el niño escucha el número; <b>desactivada</b>, lo lee él mismo. 🔈 Activa el sonido del dispositivo.</div>
+    <div class="credito">Elaborado por <b>Alberto Jiménez Ruiz</b><br>Asesor Regional de Matemática · DRE Cartago · DAP 2026</div>
+  </div>
+
+  <!-- Paso 2: elegir familia -->
+  <div class="overlay hidden" id="ovFamilia">
+    <h2>Elige la familia de números</h2>
+    <div id="famSub">Nivel 1 · Fácil</div>
+    <div id="gridFam"></div>
+    <button class="btn gris" id="btnVolverNivel">← Cambiar nivel</button>
+  </div>
+
+  <!-- Pantalla de fin -->
+  <div class="overlay hidden" id="ovFin">
+    <h2 id="finTitulo">🏆 ¡GANASTE!</h2>
+    <p id="finTexto"></p>
+    <div class="fila-btns">
+      <button class="btn verde" id="btnOtra">🔄 Otra vez</button>
+      <button class="btn gris" id="btnFamilia">🔢 Otra familia</button>
+      <button class="btn gris" id="btnMenu">🏠 Menú</button>
+    </div>
+  </div>
+</div>
+
+<footer>Recurso educativo · Primaria · Comecocos de números</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  const FAMILIAS=[
+    {id:"1-3",min:1,max:3},{id:"1-4",min:1,max:4},{id:"1-5",min:1,max:5},{id:"1-9",min:1,max:9},
+    {id:"10-19",min:10,max:19},{id:"1-19",min:1,max:19},
+    {id:"20-29",min:20,max:29},{id:"30-39",min:30,max:39},{id:"40-49",min:40,max:49},{id:"50-59",min:50,max:59},
+    {id:"60-69",min:60,max:69},{id:"70-79",min:70,max:79},{id:"80-89",min:80,max:89},{id:"90-99",min:90,max:99},
+    {id:"1-50",min:1,max:50},{id:"1-99",min:1,max:99}
+  ];
+  const MAX_MOSTRAR=19;     // familias con más números → 10 al azar
+  const N_AZAR=10;
+  const VIDAS_INI=5;
+
+  const canvas=document.getElementById('tablero');
+  const ctx=canvas.getContext('2d');
+
+  let W=600,H=600,DPR=1;
+  let estado="menu";        // menu | familia | jugando | fin
+  let modo="facil";         // facil | dificil
+  let familia=FAMILIAS[5];  // familia actual
+  let numeros=[];           // números a comer (ordenados asc)
+  let totalFam=0;
+  let ordenIdx=0;           // (facil) índice del siguiente en orden
+  let objetivo=0, comidos=0;
+  let tInicio=0,tActual=0,penal=0,coolMal=0;
+  let vidas=VIDAS_INI, restantes=[];
+
+  const pac={x:300,y:300,r:18,dir:0,mouth:0,invuln:0};
+  let mouse={x:300,y:300,active:false};
+  let ghosts=[], dots=[];
+  const COLORES=["#ff4b57","#25e0d6","#ff9d3d","#f78fe0","#7b9dff","#3ddc84","#ffd400","#ff7bac",
+                 "#63e6ff","#c084fc","#ff8f4d","#74e08a","#ff5d8f","#4dd0e1","#ffca3a","#b388ff","#6dd47e","#ff6b6b","#4da3ff"];
+  let last=0;
+
+  // ---------- Número a texto (0-99, español) ----------
+  const U=["cero","uno","dos","tres","cuatro","cinco","seis","siete","ocho","nueve","diez","once","doce","trece",
+           "catorce","quince","dieciséis","diecisiete","dieciocho","diecinueve","veinte","veintiuno","veintidós",
+           "veintitrés","veinticuatro","veinticinco","veintiséis","veintisiete","veintiocho","veintinueve"];
+  const DEC={30:"treinta",40:"cuarenta",50:"cincuenta",60:"sesenta",70:"setenta",80:"ochenta",90:"noventa"};
+  function numeroATexto(n){
+    if(n<30) return U[n];
+    const d=Math.floor(n/10)*10, r=n%10;
+    return r===0 ? DEC[d] : DEC[d]+" y "+U[r];
+  }
+  // Texto SOLO para la voz: respelleo fonético de palabras que las voces es-ES
+  // (única opción en muchos equipos) pronuncian mal tras el seseo —"diez"→"dies"(inglés),
+  // "doce"→"dose"(inglés), "cinco"→final "-co" en inglés, "once"→"ons". La pantalla usa numeroATexto (correcto).
+  function numeroAVoz(n){
+    // 11: el seseo deja "onse", que no es palabra; las voces de Windows la leían con reglas
+    // del inglés ("ons") y "ónse" la deletreaban. Con la cifra, la voz dice "once" por sí sola.
+    if(n===11) return "11";
+    return numeroATexto(n)
+      .replace(/\bveinticinco\b/g,"veintisinko")
+      .replace(/\bcincuenta\b/g,"sinkuenta")
+      .replace(/\bcinco\b/g,"sinko")
+      .replace(/\bdiez\b/g,"diés")
+      .replace(/\bonce\b/g,"onse")   // sin tilde: "ónse" hacía que algunas voces la deletrearan
+      .replace(/\bdoce\b/g,"dóse");
+  }
+
+  // ---------- Audio ----------
+  let actx=null;
+  function initAudio(){ if(actx) return; try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){actx=null;} }
+  function beep(f,d,t,v){ if(!actx) return;
+    try{ const o=actx.createOscillator(),g=actx.createGain(); o.type=t||"sine"; o.frequency.value=f; g.gain.value=0.0001;
+      o.connect(g); g.connect(actx.destination); const n=actx.currentTime;
+      g.gain.exponentialRampToValueAtTime(v||0.25,n+0.01); g.gain.exponentialRampToValueAtTime(0.0001,n+(d||0.15));
+      o.start(n); o.stop(n+(d||0.15)); }catch(e){} }
+  function sBien(){ beep(660,0.09,"square",0.25); setTimeout(()=>beep(880,0.12,"square",0.25),90); setTimeout(()=>beep(1175,0.14,"square",0.22),200); }
+  function sMal(){ beep(200,0.18,"sawtooth",0.25); setTimeout(()=>beep(150,0.22,"sawtooth",0.22),120); }
+  function sGhost(){ beep(120,0.25,"sawtooth",0.3); setTimeout(()=>beep(90,0.3,"sawtooth",0.25),120); }
+  function sWaka(){ beep(440,0.05,"square",0.12); }
+  function sWin(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.16,"square",0.25),i*140)); }
+  function sLose(){ [400,320,250,180].forEach((f,i)=>setTimeout(()=>beep(f,0.2,"sawtooth",0.22),i*150)); }
+
+  // ---------- Voz ----------
+  let vozES=null, vozLang="es-MX";
+  function cargarVoz(){
+    if(!('speechSynthesis' in window)) return;
+    const v=speechSynthesis.getVoices();
+    const pref=["es-mx","es-419","es-us","es-co","es-cr","es-ar","es-cl","es-pe","es-ve","es-gt"];
+    vozES = v.find(x=> pref.some(p=> x.lang.toLowerCase().replace('_','-').startsWith(p)))
+         || v.find(x=>/latin|latino|m[eé]xic|estados unidos|america/i.test(x.name))
+         || v.find(x=>/^es/i.test(x.lang) && !/es[-_]es/i.test(x.lang))
+         || v.find(x=>/es[-_]/i.test(x.lang))
+         || v.find(x=>/spanish|español/i.test(x.name)) || null;
+    vozLang = vozES ? vozES.lang : "es-MX";
+  }
+  if('speechSynthesis' in window){ cargarVoz(); speechSynthesis.onvoiceschanged=cargarVoz; }
+  function decir(txt){ if(!vozOn || !('speechSynthesis' in window)) return;
+    if(!vozES) cargarVoz();   // las voces cargan tarde: sin esto se usaba la voz en inglés del equipo
+    try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(txt); u.lang=vozLang;
+      if(vozES)u.voice=vozES; u.rate=0.9; u.pitch=1.05; speechSynthesis.speak(u); }catch(e){} }
+
+  // ---------- Voz activada / desactivada ----------
+  function leerVozPref(){ try{ const v=localStorage.getItem("comecocos_voz_on"); return v===null?true:v==="1"; }catch(e){ return true; } }
+  function guardarVozPref(b){ try{ localStorage.setItem("comecocos_voz_on", b?"1":"0"); }catch(e){} }
+  let vozOn=leerVozPref();
+  function pintarVoz(){
+    document.getElementById('vozEstado').textContent = vozOn?"ON":"OFF";
+    document.getElementById('panelVoz').classList.toggle('off', !vozOn);
+    document.getElementById('btnVozMenu').textContent = vozOn?"🔊 Voz del número: Activada":"🔇 Voz del número: Desactivada";
+    const b=document.getElementById('btnAudio');
+    b.textContent = vozOn?"🔊":"🔇"; b.style.opacity = vozOn?"1":"0.45";
+    b.title = vozOn?"Escuchar el número":"Voz desactivada (el niño lee)";
+  }
+  function toggleVoz(){ vozOn=!vozOn; guardarVozPref(vozOn); pintarVoz(); if(vozOn && objetivo) decir(numeroAVoz(objetivo)); }
+
+  // ---------- Récord (por nivel + familia) ----------
+  function fmt(ms){ const s=Math.floor(ms/1000),m=Math.floor(s/60),r=s%60; return String(m).padStart(2,'0')+":"+String(r).padStart(2,'0'); }
+  function recKey(m,fid){ return "comecocos_rec_"+m+"_"+fid; }
+  function leerRec(m,fid){ try{ const v=localStorage.getItem(recKey(m,fid)); return v?parseInt(v,10):null; }catch(e){ return null; } }
+  function guardarRec(m,fid,ms){ try{ localStorage.setItem(recKey(m,fid),String(ms)); }catch(e){} }
+  function pintarRecordHUD(){ const r=leerRec(modo,familia.id); document.getElementById('record').textContent=r?fmt(r):"—"; }
+
+  // ---------- Resize ----------
+  function resize(){
+    const wrap=document.getElementById('wrap');
+    let size=Math.min(wrap.clientWidth,wrap.clientHeight);
+    size=Math.max(280,Math.min(size,720));
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=size;H=size;
+    canvas.style.width=W+"px"; canvas.style.height=H+"px";
+    canvas.width=Math.round(W*DPR); canvas.height=Math.round(H*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    pac.r=Math.max(14,W*0.034);
+  }
+  window.addEventListener('resize',resize);
+
+  // ---------- Familia → números ----------
+  function numerosDeFamilia(fam){
+    const arr=[]; for(let n=fam.min;n<=fam.max;n++) arr.push(n);
+    if(arr.length>(modo==="palabra"?N_AZAR:MAX_MOSTRAR)){
+      for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+      arr.length=N_AZAR;
+    }
+    arr.sort((a,b)=>a-b);
+    return arr;
+  }
+
+  // ---------- Celdas de una cuadrícula ajustada a N ----------
+  function celdasParaN(n){
+    let cols=Math.ceil(Math.sqrt(n*1.15)); cols=Math.max(2,Math.min(6,cols));
+    let rows=Math.ceil(n/cols);
+    const margin=W*0.12;
+    const gw=cols>1?(W-margin*2)/(cols-1):0, gh=rows>1?(H-margin*2)/(rows-1):0;
+    const cs=[];
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) cs.push({x:margin+c*gw+(cols===1?W/2-margin:0), y:margin+r*gh+(rows===1?H/2-margin:0)});
+    for(let i=cs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [cs[i],cs[j]]=[cs[j],cs[i]]; }
+    return cs;
+  }
+
+  // FACIL: fantasmas numerados inofensivos
+  function crearGhostsFacil(){
+    ghosts=[]; const cs=celdasParaN(numeros.length);
+    numeros.forEach((n,k)=>{
+      const cel=cs[k], ang=Math.random()*Math.PI*2, v=W*0.0011+Math.random()*W*0.0009;
+      ghosts.push({ n, x:cel.x+(Math.random()*2-1)*W*0.02, y:cel.y+(Math.random()*2-1)*W*0.02,
+        vx:Math.cos(ang)*v, vy:Math.sin(ang)*v, r:W*0.043, color:COLORES[k%COLORES.length],
+        wob:Math.random()*Math.PI*2, turn:500+Math.random()*1500, comido:false, pop:0, peligro:false });
+    });
+  }
+  // DIFICIL: números en puntos + fantasmas peligrosos
+  function crearNivelDificil(){
+    dots=[]; const cs=celdasParaN(numeros.length);
+    numeros.forEach((n,k)=>{ const cel=cs[k];
+      dots.push({ n, x:cel.x+(Math.random()*2-1)*W*0.022, y:cel.y+(Math.random()*2-1)*W*0.022, comido:false }); });
+    ghosts=[]; const cant=4;
+    for(let i=0;i<cant;i++){ const ang=Math.random()*Math.PI*2, v=W*0.0022+Math.random()*W*0.0013;
+      ghosts.push({ n:0, x:W*0.2+Math.random()*W*0.6, y:W*0.2+Math.random()*W*0.6, vx:Math.cos(ang)*v, vy:Math.sin(ang)*v,
+        r:W*0.04, color:COLORES[i%4], wob:Math.random()*Math.PI*2, turn:600+Math.random()*1200, comido:false, pop:0, peligro:true }); }
+  }
+
+  // ---------- Objetivo ----------
+  function ponerObjetivo(n){ objetivo=n; document.getElementById('palabra').textContent=(modo==="palabra"?String(n):numeroATexto(n)); setTimeout(()=>decir(numeroAVoz(n)),200); }
+  function objetivoDificil(){ if(restantes.length===0) return; const i=Math.floor(Math.random()*restantes.length); ponerObjetivo(restantes[i]); }
+
+  // ---------- Flash ----------
+  const flashEl=document.getElementById('flash'); let flashTO=null;
+  function flash(txt,tipo){ flashEl.textContent=txt; flashEl.className="show "+tipo; if(flashTO) clearTimeout(flashTO); flashTO=setTimeout(()=>{ flashEl.className=""; },950); }
+
+  // ---------- Menú de familias ----------
+  function renderFamilias(){
+    const cont=document.getElementById('gridFam'); cont.innerHTML="";
+    document.getElementById('famSub').textContent = (modo==="facil"?"Nivel 1 · Fácil":modo==="dificil"?"Nivel 2 · Difícil":"De literal a numeral");
+    FAMILIAS.forEach(fam=>{
+      const count=fam.max-fam.min+1;
+      const chip=document.createElement('button');
+      chip.className="famchip "+(modo==="facil"?"f":modo==="dificil"?"d":"p");
+      const rec=leerRec(modo,fam.id);
+      chip.innerHTML='<span class="fl">'+fam.min+'–'+fam.max+'</span>'+
+                     '<span class="fc">'+(count>(modo==="palabra"?N_AZAR:MAX_MOSTRAR)?(N_AZAR+' al azar'):(count+' núm.'))+'</span>'+
+                     '<span class="fr">'+(rec?('🏆 '+fmt(rec)):'&nbsp;')+'</span>';
+      chip.addEventListener('click',()=>iniciar(fam));
+      cont.appendChild(chip);
+    });
+  }
+  function irAFamilias(m){
+    modo=m; estado="familia";
+    document.getElementById('ovMenu').classList.add('hidden');
+    document.getElementById('ovFin').classList.add('hidden');
+    renderFamilias();
+    document.getElementById('ovFamilia').classList.remove('hidden');
+  }
+  function irAMenu(){
+    estado="menu";
+    document.getElementById('ovFamilia').classList.add('hidden');
+    document.getElementById('ovFin').classList.add('hidden');
+    document.getElementById('ovMenu').classList.remove('hidden');
+  }
+
+  // ---------- Iniciar ----------
+  function iniciar(fam){
+    lab.activo=false; familia=fam; initAudio(); resize();
+    numeros=numerosDeFamilia(fam); totalFam=numeros.length; ordenIdx=0;
+    comidos=0; penal=0; coolMal=0; vidas=VIDAS_INI;
+    pac.x=W/2; pac.y=H/2; pac.invuln=0;
+    mouse.x=W/2; mouse.y=H/2; mouse.active=false;
+    tInicio=performance.now(); tActual=0;
+    document.getElementById('panelVidas').classList.toggle('hidden', modo!=="dificil");
+    document.getElementById('objLbl').textContent = (modo==="dificil")?"Come el número…":"Come el fantasma…";
+    pintarRecordHUD();
+    document.getElementById('ovMenu').classList.add('hidden');
+    document.getElementById('ovFamilia').classList.add('hidden');
+    document.getElementById('ovFin').classList.add('hidden');
+    estado="jugando";
+    if(modo==="facil"){ crearGhostsFacil(); ordenIdx=0; ponerObjetivo(numeros[0]); }
+    else if(modo==="palabra"){ crearLaberinto(); restantes=numeros.slice(); objetivoDificil(); }
+    else{ crearNivelDificil(); restantes=numeros.slice(); objetivoDificil(); }
+    actualizarHUD();
+  }
+
+  function actualizarHUD(){
+    document.getElementById('progreso').textContent=comidos+"/"+totalFam;
+    document.getElementById('tiempo').textContent=fmt(tActual);
+    if(modo==="dificil") document.getElementById('vidas').textContent="❤️".repeat(Math.max(0,vidas))+"🤍".repeat(Math.max(0,VIDAS_INI-vidas));
+  }
+
+  function terminar(gano){
+    estado="fin";
+    const t=document.getElementById('finTitulo');
+    if(gano){
+      const total=tActual, rec=leerRec(modo,familia.id);
+      const nuevo=(rec===null||total<rec); if(nuevo) guardarRec(modo,familia.id,total);
+      pintarRecordHUD();
+      t.textContent="🏆 ¡GANASTE!";
+      let msg="Familia <b>"+familia.min+"–"+familia.max+"</b> · "+(modo==="facil"?"Fácil":modo==="dificil"?"Difícil":"De literal a numeral")+
+              "<br>Comiste los "+totalFam+" números.<br>Tu tiempo: <b>"+fmt(total)+"</b>";
+      msg += nuevo ? "<br><span style='color:#3ddc84'>🎉 ¡NUEVO RÉCORD!</span>" : "<br>Récord: <b>"+fmt(rec)+"</b>";
+      document.getElementById('finTexto').innerHTML=msg;
+      sWin(); decir("¡Excelente! Lo lograste.");
+    }else{
+      t.textContent="👻 ¡Uy!";
+      document.getElementById('finTexto').innerHTML="Los fantasmas te atraparon.<br>Comiste <b>"+comidos+"</b> de "+totalFam+" números.<br>¡Inténtalo otra vez!";
+      sLose(); decir("¡No te rindas! Inténtalo otra vez.");
+    }
+    document.getElementById('ovFin').classList.remove('hidden');
+  }
+
+  // ---------- Entrada ----------
+  function posEvt(e){ const rect=canvas.getBoundingClientRect();
+    const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+    const cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+    mouse.x=Math.max(0,Math.min(W,cx)); mouse.y=Math.max(0,Math.min(H,cy)); mouse.active=true; }
+  canvas.addEventListener('mousemove',posEvt);
+  window.addEventListener('keydown',function(e){
+    const k={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];
+    if(!k || estado!=="jugando" || modo!=="palabra") return;
+    e.preventDefault(); lab.want=k; mouse.active=false;
+  });
+  canvas.addEventListener('mouseenter',posEvt);
+  canvas.addEventListener('touchstart',function(e){ posEvt(e); e.preventDefault(); },{passive:false});
+  canvas.addEventListener('touchmove',function(e){ posEvt(e); e.preventDefault(); },{passive:false});
+
+  // ---------- Update ----------
+  function moverGhost(g,dt){
+    g.x+=g.vx*(dt/16.67); g.y+=g.vy*(dt/16.67); g.wob+=dt*0.007;
+    if(g.x<g.r){ g.x=g.r; g.vx=Math.abs(g.vx); } if(g.x>W-g.r){ g.x=W-g.r; g.vx=-Math.abs(g.vx); }
+    if(g.y<g.r){ g.y=g.r; g.vy=Math.abs(g.vy); } if(g.y>H-g.r){ g.y=H-g.r; g.vy=-Math.abs(g.vy); }
+    g.turn-=dt;
+    if(g.turn<=0){ g.turn=1000+Math.random()*1500; const sp=Math.hypot(g.vx,g.vy);
+      const na=Math.atan2(g.vy,g.vx)+(Math.random()*1.2-0.6); g.vx=Math.cos(na)*sp; g.vy=Math.sin(na)*sp; }
+  }
+  function update(dt){
+    if(estado!=="jugando") return;
+    tActual=performance.now()-tInicio+penal;
+    if(modo==="palabra"){ updateLab(dt); if(estado==="jugando") actualizarHUD(); return; }
+    const tx=mouse.active?mouse.x:pac.x, ty=mouse.active?mouse.y:pac.y;
+    const dx=tx-pac.x, dy=ty-pac.y, dist=Math.hypot(dx,dy);
+    const maxV=W*0.012, ease=0.18;
+    let mvx=dx*ease, mvy=dy*ease; const mv=Math.hypot(mvx,mvy);
+    if(mv>maxV){ mvx=mvx/mv*maxV; mvy=mvy/mv*maxV; }
+    pac.x+=mvx*(dt/16.67); pac.y+=mvy*(dt/16.67);
+    pac.x=Math.max(pac.r,Math.min(W-pac.r,pac.x)); pac.y=Math.max(pac.r,Math.min(H-pac.r,pac.y));
+    if(dist>3) pac.dir=Math.atan2(mvy,mvx);
+    pac.mouth += (mv>0.4?0.25:0.08);
+    if(coolMal>0) coolMal-=dt; if(pac.invuln>0) pac.invuln-=dt;
+
+    if(modo==="facil"){
+      for(const g of ghosts){
+        if(g.comido){ if(g.pop>0) g.pop-=dt; continue; }
+        moverGhost(g,dt);
+        if(Math.hypot(g.x-pac.x,g.y-pac.y) < pac.r+g.r*0.72){
+          if(g.n===objetivo){
+            g.comido=true; g.pop=260; comidos++; sBien();
+            flash("¡"+numeroATexto(g.n).toUpperCase()+"! ✓","bien"); actualizarHUD();
+            if(comidos>=totalFam){ terminar(true); return; }
+            ordenIdx++; ponerObjetivo(numeros[ordenIdx]);
+          } else if(coolMal<=0){
+            coolMal=650; penal+=2000; sMal(); flash("Ese es el "+g.n+" · +2s","mal");
+            const a=Math.atan2(pac.y-g.y,pac.x-g.x); pac.x+=Math.cos(a)*pac.r*1.4; pac.y+=Math.sin(a)*pac.r*1.4;
+          }
+        }
+      }
+    } else {
+      for(const d of dots){
+        if(d.comido) continue;
+        if(Math.hypot(d.x-pac.x,d.y-pac.y) < pac.r+W*0.028){
+          if(d.n===objetivo){
+            d.comido=true; comidos++; sBien();
+            const i=restantes.indexOf(objetivo); if(i>=0) restantes.splice(i,1);
+            flash("¡"+numeroATexto(d.n).toUpperCase()+"! ✓","bien"); actualizarHUD();
+            if(comidos>=totalFam){ terminar(true); return; }
+            objetivoDificil();
+          } else if(coolMal<=0){
+            coolMal=600; penal+=2000; sMal(); flash("Ese es el "+d.n+" · +2s","mal");
+            const a=Math.atan2(pac.y-d.y,pac.x-d.x); pac.x+=Math.cos(a)*pac.r*1.5; pac.y+=Math.sin(a)*pac.r*1.5;
+          }
+        }
+      }
+      for(const g of ghosts){
+        moverGhost(g,dt);
+        if(pac.invuln<=0 && Math.hypot(g.x-pac.x,g.y-pac.y) < g.r+pac.r*0.8){
+          vidas--; sGhost(); flash("¡Fantasma! 👻","mal");
+          pac.invuln=1500; pac.x=W/2; pac.y=H/2; mouse.active=false; actualizarHUD();
+          if(vidas<=0){ terminar(false); return; }
+        }
+      }
+    }
+    actualizarHUD();
+  }
+
+  // ---------- Dibujo ----------
+  function fontNum(r,txt){ return "bold "+(txt.length>=2?r*0.74:r*1.02)+"px 'Trebuchet MS',sans-serif"; }
+  function dibujarGhost(c,g){
+    const r=g.r; let sc=1; if(g.comido){ sc=1+(1-g.pop/260)*0.6; }
+    c.save(); c.translate(g.x,g.y);
+    if(g.comido){ c.globalAlpha=Math.max(0,g.pop/260); c.scale(sc,sc); }
+    if(g.peligro && pac.invuln>0 && Math.floor(pac.invuln/120)%2===0) c.globalAlpha=0.5;
+    c.beginPath(); c.arc(0,-r*0.15,r,Math.PI,0); c.lineTo(r,r*0.72);
+    for(let i=0;i<4;i++){ const x2=r-(2*r)*((i+1)/4), x1=r-(2*r)*((i+0.5)/4), yy=r*0.72+(Math.sin(g.wob+i)*r*0.10);
+      c.quadraticCurveTo(x1,r*0.96+yy*0.15,x2,r*0.72); }
+    c.closePath(); c.fillStyle=g.color; c.shadowColor="rgba(0,0,0,.45)"; c.shadowBlur=8; c.fill(); c.shadowBlur=0;
+    if(g.peligro){
+      const ex=pac.x-g.x, ey=pac.y-g.y, el=Math.hypot(ex,ey)||1, ox=(ex/el)*r*0.12, oy=(ey/el)*r*0.12;
+      for(const s of[-1,1]){ c.beginPath(); c.ellipse(s*r*0.35,-r*0.12,r*0.24,r*0.30,0,0,Math.PI*2); c.fillStyle="#fff"; c.fill();
+        c.beginPath(); c.arc(s*r*0.35+ox,-r*0.12+oy,r*0.13,0,Math.PI*2); c.fillStyle="#12235e"; c.fill(); }
+    } else {
+      for(const s of[-1,1]){ c.beginPath(); c.ellipse(s*r*0.34,-r*0.34,r*0.13,r*0.17,0,0,Math.PI*2); c.fillStyle="#fff"; c.fill();
+        c.beginPath(); c.arc(s*r*0.34,-r*0.32,r*0.07,0,Math.PI*2); c.fillStyle="#12235e"; c.fill(); }
+      if(modo==="palabra"){ dibujarPalabra(c,g,r); c.restore(); return; }
+      const num=String(g.n);
+      c.font=fontNum(r,num); c.textAlign="center"; c.textBaseline="middle";
+      c.lineWidth=Math.max(3,r*0.16); c.strokeStyle="rgba(0,0,0,.6)"; c.strokeText(num,0,r*0.22);
+      c.fillStyle="#fff"; c.fillText(num,0,r*0.22);
+    }
+    c.restore();
+  }
+  // Palabra del número en un cartel bajo los ojos ("noventa y" / "nueve" en dos renglones)
+  function dibujarPalabra(c,g,r){
+    const t=numeroATexto(g.n), k=t.indexOf(" y ");
+    const lineas = k>0 ? [t.slice(0,k+2), t.slice(k+3)] : [t];
+    const fs=Math.max(11,Math.min(W*0.027,r*0.8)); c.font="bold "+fs+"px 'Trebuchet MS',sans-serif"; c.textAlign="center"; c.textBaseline="middle";
+    const ancho=Math.max(...lineas.map(l=>c.measureText(l).width))+fs*0.9, alto=lineas.length*fs*1.1+fs*0.5;
+    const y0=r*0.22-alto/2+(lineas.length>1?fs*0.25:0);
+    c.beginPath(); if(c.roundRect) c.roundRect(-ancho/2,y0,ancho,alto,fs*0.45); else c.rect(-ancho/2,y0,ancho,alto);
+    c.fillStyle="rgba(255,255,255,.95)"; c.shadowColor="rgba(0,0,0,.4)"; c.shadowBlur=6; c.fill(); c.shadowBlur=0;
+    c.lineWidth=2; c.strokeStyle=g.color; c.stroke();
+    c.fillStyle="#12235e"; lineas.forEach((l,i)=>c.fillText(l,0,y0+fs*0.25+fs*1.1*(i+0.5)));
+  }
+  function dibujarDot(d){
+    if(d.comido) return; const r=W*0.032, txt=String(d.n);
+    ctx.save(); ctx.beginPath(); ctx.arc(d.x,d.y,r,0,Math.PI*2);
+    const esObj=(d.n===objetivo);
+    ctx.fillStyle=esObj?"#fff2b0":"#ffe98a"; ctx.shadowColor="rgba(255,212,0,.7)"; ctx.shadowBlur=esObj?18:8; ctx.fill(); ctx.shadowBlur=0;
+    ctx.lineWidth=2; ctx.strokeStyle="rgba(180,130,0,.6)"; ctx.stroke();
+    ctx.fillStyle="#5a3d00"; ctx.font="bold "+(txt.length>=2?r*0.82:r*1.05)+"px 'Trebuchet MS',sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(txt,d.x,d.y+1); ctx.restore();
+  }
+  function dibujarPac(){
+    ctx.save(); ctx.translate(pac.x,pac.y); ctx.rotate(pac.dir);
+    const m=(Math.sin(pac.mouth)*0.5+0.5)*0.32+0.04;
+    if(pac.invuln>0 && Math.floor(pac.invuln/120)%2===0) ctx.globalAlpha=0.45;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,pac.r,m*Math.PI,(2-m)*Math.PI); ctx.closePath();
+    ctx.fillStyle="#ffd400"; ctx.shadowColor="rgba(255,212,0,.6)"; ctx.shadowBlur=14; ctx.fill(); ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.arc(pac.r*0.15,-pac.r*0.45,pac.r*0.13,0,Math.PI*2); ctx.fillStyle="#3a2a00"; ctx.fill();
+    ctx.restore();
+  }
+  function dibujarCursor(){ if(!mouse.active) return; ctx.save(); ctx.strokeStyle="rgba(255,255,255,.25)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(mouse.x,mouse.y,6,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    if(lab.activo){ drawLab(); return; }
+    if(modo==="dificil") for(const d of dots) dibujarDot(d);
+    for(const g of ghosts) if(g.comido && g.pop>0) dibujarGhost(ctx,g);
+    for(const g of ghosts) if(!g.comido) dibujarGhost(ctx,g);
+    if(estado==="jugando") dibujarCursor();
+    if(estado==="jugando"||estado==="fin") dibujarPac();
+  }
+  function loop(ts){ const dt=Math.min(50,ts-last||16.67); last=ts; update(dt); draw(); requestAnimationFrame(loop); }
+
+
+  // ================= Laberinto (De literal a numeral) =================
+  const MAZE=["#############","#.....#.....#","#.###.#.###.#","#...........#","#.##.#.#.##.#","#....#.#....#",
+              "###.#...#.###","#...#.#.#...#","#.#.......#.#","#.#.##.##.#.#","#...#...#...#","#.....#.....#","#############"];
+  const MZ=MAZE.length;
+  const lab={ p:null, pellets:new Set(), want:null, activo:false };
+  const libre=(c,r)=> r>=0&&r<MZ&&c>=0&&c<MZ&&MAZE[r][c]===".";
+  const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+  function ent(c,r){ return {c,r,x:c,y:r,tc:c,tr:r,d:[0,0]}; }
+  function crearLaberinto(){
+    const p=ent(6,8); p.d=[0,0]; lab.p=p; lab.want=null; lab.activo=true;
+    lab.pellets=new Set();
+    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(libre(c,r) && !(c===6&&r===8)) lab.pellets.add(c+","+r);
+    const cand=[]; for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(libre(c,r) && Math.abs(c-6)+Math.abs(r-8)>=4) cand.push([c,r]);
+    for(let i=cand.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [cand[i],cand[j]]=[cand[j],cand[i]]; }
+    // repartir: que no queden dos fantasmas en la misma casilla ni pegados
+    const usados=[]; ghosts=[];
+    for(const [c,r] of cand){ if(usados.length>=numeros.length) break;
+      if(usados.some(u=>Math.abs(u[0]-c)+Math.abs(u[1]-r)<3)) continue; usados.push([c,r]); }
+    for(const [c,r] of cand){ if(usados.length>=numeros.length) break; if(!usados.some(u=>u[0]===c&&u[1]===r)) usados.push([c,r]); }
+    numeros.forEach((n,k)=>{ const g=ent(usados[k][0],usados[k][1]);
+      Object.assign(g,{ n, color:COLORES[k%COLORES.length], wob:Math.random()*Math.PI*2, comido:false, pop:0, peligro:false, mal:0 });
+      elegirDirGhost(g); ghosts.push(g); });
+    mouse.active=false;
+  }
+  function elegirDirGhost(g){
+    const ops=DIRS.filter(d=>libre(g.c+d[0],g.r+d[1]));
+    const sinVolver=ops.filter(d=>!(d[0]===-g.d[0]&&d[1]===-g.d[1]));
+    const lista=sinVolver.length?sinVolver:ops; const d=lista[Math.floor(Math.random()*lista.length)]||[0,0];
+    g.d=d; g.tc=g.c+d[0]; g.tr=g.r+d[1];
+  }
+  // casilla libre más cercana a un punto del tablero (en casillas)
+  function casillaCercana(fx,fy){ let best=null,bd=1e9;
+    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(libre(c,r)){ const d=(c-fx)*(c-fx)+(r-fy)*(r-fy); if(d<bd){bd=d;best=[c,r];} }
+    return best; }
+  // primer paso del camino más corto (BFS) desde (c,r) hasta destino
+  function primerPaso(c,r,dest){
+    if(c===dest[0]&&r===dest[1]) return null;
+    const prev={}, q=[[c,r]]; prev[c+","+r]=null;
+    while(q.length){ const [x,y]=q.shift(); if(x===dest[0]&&y===dest[1]) break;
+      for(const d of DIRS){ const nx=x+d[0],ny=y+d[1],k=nx+","+ny; if(libre(nx,ny) && !(k in prev)){ prev[k]=[x,y]; q.push([nx,ny]); } } }
+    let k=dest[0]+","+dest[1]; if(!(k in prev)) return null;
+    let cur=dest; while(prev[cur[0]+","+cur[1]] && !(prev[cur[0]+","+cur[1]][0]===c && prev[cur[0]+","+cur[1]][1]===r)) cur=prev[cur[0]+","+cur[1]];
+    return [cur[0]-c,cur[1]-r];
+  }
+  function dirDeseadaPac(p){
+    if(mouse.active){ const T=W/MZ; const dest=casillaCercana(mouse.x/T-0.5,mouse.y/T-0.5); return primerPaso(p.c,p.r,dest); }
+    return lab.want;
+  }
+  // mueve una entidad hacia su casilla destino; devuelve true al llegar al centro
+  function avanzar(e,vel){
+    const dx=e.tc-e.x, dy=e.tr-e.y, dist=Math.abs(dx)+Math.abs(dy);
+    if(dist<=vel){ e.x=e.tc; e.y=e.tr; e.c=e.tc; e.r=e.tr; return true; }
+    e.x+=Math.sign(dx)*vel; e.y+=Math.sign(dy)*vel; return false;
+  }
+  function updateLab(dt){
+    const p=lab.p; if(!p) return;
+    const want=dirDeseadaPac(p);
+    // dar la vuelta a mitad de pasillo
+    if(want && p.d && want[0]===-p.d[0] && want[1]===-p.d[1] && (p.d[0]||p.d[1])){
+      const oc=p.c, or=p.r; p.c=p.tc; p.r=p.tr; p.tc=oc; p.tr=or; p.d=want; }
+    let llegado=avanzar(p,0.0055*dt);
+    if(llegado){
+      const k=p.c+","+p.r; if(lab.pellets.has(k)){ lab.pellets.delete(k); sWaka(); }
+      const w=dirDeseadaPac(p);
+      if(w && libre(p.c+w[0],p.r+w[1])){ p.d=w; p.tc=p.c+w[0]; p.tr=p.r+w[1]; }
+      else if(!mouse.active && libre(p.c+p.d[0],p.r+p.d[1]) && (p.d[0]||p.d[1])){ p.tc=p.c+p.d[0]; p.tr=p.r+p.d[1]; }
+      else { p.d=[0,0]; p.tc=p.c; p.tr=p.r; }
+    }
+    if(p.d[0]||p.d[1]){ pac.dir=Math.atan2(p.d[1],p.d[0]); pac.mouth+=0.25; } else pac.mouth+=0.06;
+    if(coolMal>0) coolMal-=dt;
+    for(const g of ghosts){
+      if(g.comido){ if(g.pop>0) g.pop-=dt; continue; }
+      g.wob+=dt*0.007; if(g.mal>0) g.mal-=dt;
+      if(avanzar(g,0.0026*dt)) elegirDirGhost(g);
+      if(Math.hypot(g.x-p.x,g.y-p.y)<0.72){
+        if(g.n===objetivo){
+          g.comido=true; g.pop=260; comidos++; sBien();
+          flash("¡"+g.n+" · "+numeroATexto(g.n).toUpperCase()+"! ✓","bien");
+          const i=restantes.indexOf(g.n); if(i>=0) restantes.splice(i,1);
+          actualizarHUD();
+          if(comidos>=totalFam){ terminar(true); return; }
+          objetivoDificil();
+        } else if(coolMal<=0){
+          coolMal=900; penal+=2000; sMal(); g.mal=600;
+          flash("Ese dice "+numeroATexto(g.n)+" · +2s","mal");
+          // el fantasma se da la vuelta
+          const oc=g.c, or=g.r; g.c=g.tc; g.r=g.tr; g.tc=oc; g.tr=or; g.d=[-g.d[0],-g.d[1]];
+        }
+      }
+    }
+  }
+  function drawLab(){
+    const T=W/MZ;
+    ctx.save(); ctx.fillStyle="#050b22"; ctx.fillRect(0,0,W,H);
+    // paredes: relleno + borde de neón solo hacia los pasillos
+    ctx.fillStyle="#0f1f63";
+    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++) if(!libre(c,r)) ctx.fillRect(c*T,r*T,T+0.5,T+0.5);
+    ctx.strokeStyle="#4d7cff"; ctx.lineWidth=Math.max(2,T*0.08); ctx.lineCap="round"; ctx.shadowColor="#4d7cff"; ctx.shadowBlur=8;
+    ctx.beginPath();
+    const ins=T*0.1;
+    for(let r=0;r<MZ;r++) for(let c=0;c<MZ;c++){ if(libre(c,r)) continue;
+      const x=c*T,y=r*T;
+      if(libre(c,r-1)){ ctx.moveTo(x,y+ins); ctx.lineTo(x+T,y+ins); }
+      if(libre(c,r+1)){ ctx.moveTo(x,y+T-ins); ctx.lineTo(x+T,y+T-ins); }
+      if(libre(c-1,r)){ ctx.moveTo(x+ins,y); ctx.lineTo(x+ins,y+T); }
+      if(libre(c+1,r)){ ctx.moveTo(x+T-ins,y); ctx.lineTo(x+T-ins,y+T); }
+    }
+    ctx.stroke(); ctx.shadowBlur=0;
+    // bolitas
+    ctx.fillStyle="#ffd9a0";
+    lab.pellets.forEach(k=>{ const [c,r]=k.split(",").map(Number); ctx.beginPath(); ctx.arc((c+0.5)*T,(r+0.5)*T,Math.max(2,T*0.07),0,Math.PI*2); ctx.fill(); });
+    ctx.restore();
+    // pac-man
+    if(lab.p){ pac.x=(lab.p.x+0.5)*T; pac.y=(lab.p.y+0.5)*T; pac.r=T*0.42; }
+    const vista=g=>Object.assign({},g,{x:(g.x+0.5)*T+(g.mal>0?Math.sin(g.mal*0.08)*T*0.08:0),y:(g.y+0.5)*T,r:T*0.42});
+    for(const g of ghosts) if(g.comido && g.pop>0) dibujarGhost(ctx,vista(g));
+    dibujarPac();
+    for(const g of ghosts) if(!g.comido) dibujarGhost(ctx,vista(g));
+  }
+
+  // ---------- Botones ----------
+  document.getElementById('cardFacil').addEventListener('click',()=>irAFamilias("facil"));
+  document.getElementById('cardDificil').addEventListener('click',()=>irAFamilias("dificil"));
+  document.getElementById('cardPalabra').addEventListener('click',()=>irAFamilias("palabra"));
+  document.getElementById('btnVolverNivel').addEventListener('click',irAMenu);
+  document.getElementById('btnOtra').addEventListener('click',()=>iniciar(familia));
+  document.getElementById('btnFamilia').addEventListener('click',()=>irAFamilias(modo));
+  document.getElementById('btnMenu').addEventListener('click',irAMenu);
+  document.getElementById('btnAudio').addEventListener('click',function(){ initAudio(); if(objetivo) decir(numeroAVoz(objetivo)); sWaka(); });
+  document.getElementById('panelVoz').addEventListener('click',()=>{ initAudio(); toggleVoz(); });
+  document.getElementById('btnVozMenu').addEventListener('click',()=>{ initAudio(); toggleVoz(); });
+
+  // ---------- Arranque ----------
+  resize(); pac.x=W/2; pac.y=H/2; pintarVoz();
+  if(location.hash==="#prueba") window.__pm={lab,get ghosts(){return ghosts},get objetivo(){return objetivo},get estado(){return estado},get comidos(){return comidos},update:dt=>update(dt)};
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
